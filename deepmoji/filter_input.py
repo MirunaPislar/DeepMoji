@@ -19,11 +19,11 @@ def read_english(path="english_words.txt", add_emojis=True):
 
 def read_wanted_emojis(path="wanted_emojis.csv"):
     emojis = []
-    with open(path, 'rb') as f:
+    with open(path, 'r') as f:
         reader = csv.reader(f)
         for line in reader:
             line = line[0].strip().replace('\n', '')
-            line = line.decode('unicode-escape')
+            line = line.encode('utf-8').decode('unicode-escape')
             emojis.append(line)
     return emojis
 
@@ -33,3 +33,7 @@ def read_non_english_users(path="unwanted_users.npz"):
     except IOError:
         neu_set = set()
     return neu_set
+    
+emojis = read_wanted_emojis(path="wanted_emojis.csv")
+for e in emojis:
+    print(e.encode('utf-8'))

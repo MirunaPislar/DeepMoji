@@ -11,20 +11,25 @@ from __future__ import print_function, division
 import example_helper
 import json
 import csv
+from pandas import read_csv, DataFrame
 import numpy as np
 from deepmoji.sentence_tokenizer import SentenceTokenizer
 from deepmoji.model_def import deepmoji_emojis
 from deepmoji.global_variables import PRETRAINED_PATH, VOCAB_PATH
 
-OUTPUT_PATH = 'test_sentences.csv'
+INPUT_PATH = 'train.txt'
+OUTPUT_PATH = INPUT_PATH[:-4] + '_sentences.csv'
 
-TEST_SENTENCES = [u'I love mom\'s cooking',
-                  u'I love how you never reply back..',
-                  u'I love cruising with my homies',
-                  u'I love messing with yo mind!!',
-                  u'I love you and now you\'re just gone..',
-                  u'This is shit',
-                  u'This is the shit']
+# Load data
+print("Loading data...")
+data = read_csv(INPUT_PATH, sep="\t+", header=None, engine='python')
+data.columns = ["Set", "Label", "Text"]
+print('The shape of this data set is: ', data.shape)
+x, labels = np.array(data["Text"]), np.array(data["Label"])
+
+SENTENCES = []
+for tw in x:
+    SENTENCES.append(str(tw).decode('utf-8'))
 
 def top_elements(array, k):
     ind = np.argpartition(array, -k)[-k:]
@@ -37,7 +42,7 @@ print('Tokenizing using dictionary from {}'.format(VOCAB_PATH))
 with open(VOCAB_PATH, 'r') as f:
     vocabulary = json.load(f)
 st = SentenceTokenizer(vocabulary, maxlen)
-tokenized, _, _ = st.tokenize_sentences(TEST_SENTENCES)
+tokenized, _, _ = st.tokenize_sentences(SENTENCES)
 
 print('Loading model from {}.'.format(PRETRAINED_PATH))
 model = deepmoji_emojis(maxlen, PRETRAINED_PATH)
@@ -51,7 +56,7 @@ prob = model.predict(tokenized)
 # at the root of the DeepMoji repo.
 print('Writing results to {}'.format(OUTPUT_PATH))
 scores = []
-for i, t in enumerate(TEST_SENTENCES):
+for i, t in enumerate(SENTENCES):
     t_tokens = tokenized[i]
     t_score = [t]
     t_prob = prob[i]
@@ -61,14 +66,7 @@ for i, t in enumerate(TEST_SENTENCES):
     t_score.extend([t_prob[ind] for ind in ind_top])
     scores.append(t_score)
     print(t_score)
-
-with open(OUTPUT_PATH, 'wb') as csvfile:
-    writer = csv.writer(csvfile, delimiter=',', lineterminator='\n')
-    writer.writerow(['Text', 'Top5%',
-                     'Emoji_1', 'Emoji_2', 'Emoji_3', 'Emoji_4', 'Emoji_5',
-                     'Pct_1', 'Pct_2', 'Pct_3', 'Pct_4', 'Pct_5'])
-    for i, row in enumerate(scores):
-        try:
-            writer.writerow(row)
-        except:
-            print("Exception at row {}!".format(i))
+    
+# Save the scores as data frame
+df = DataFrame(scores, columns=['Text', 'Top5%', 'Emoji_1', 'Emoji_2', 'Emoji_3', 'Emoji_4', 'Emoji_5', 'Pct_1', 'Pct_2', 'Pct_3', 'Pct_4', 'Pct_5'])
+df.to_csv('data_frame_' + INPUT_PATH[:-4] + '.csv', sep='\t', encoding='utf-8')
